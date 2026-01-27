@@ -209,6 +209,9 @@ class ConversationGenerator:
 
         result = json.loads(content)
 
+        # Add model at top level for easy parsing
+        result["model"] = self.model
+
         # Add metadata
         result["_metadata"] = {
             "language": evaluated["language"].value,
