@@ -52,3 +52,138 @@ Use `--stats` alone to validate without writing output:
 ```bash
 python -m conversation_parser data/*.jsonl --stats
 ```
+
+## Step 3: LLM-as-a-Judge Evaluation
+
+Evaluate conversations on linguistic quality using an LLM judge. Supports OpenAI and Groq providers.
+
+```bash
+# Evaluate Estonian conversations (default: gpt-5-mini)
+python -m llm_judge data/combined_et.json --stats
+
+# Use different reasoning effort for o-series models
+python -m llm_judge data/combined_fi.json --reasoning-effort high --stats
+
+# Use Groq provider with Llama model
+python -m llm_judge data/combined_hu.json --provider groq -m llama-3.3-70b-versatile
+
+# Specify output path
+python -m llm_judge data/combined_hu.json -o results/judge_hu.jsonl
+```
+
+Output is JSONL with scores for each conversation:
+```json
+{
+  "conversation_id": 0,
+  "generator_model": "gpt-4.1-mini",
+  "G": 4, "R": 3, "C": 3, "F": 2,
+  "explanation": "...",
+  "source_file": "data/combined_et.json"
+}
+```
+
+**Scoring criteria:**
+- **Grammaticality (G)**: 0-4 - grammatical correctness
+- **Readability (R)**: 0-4 - ease of reading, natural flow
+- **Content Coherence (C)**: 0-3 - logical customer support dialogue
+- **Fluency (F)**: 0-3 - native speaker naturalness
+
+### Analyze Existing Results
+
+Load and analyze existing JSONL results without re-running evaluation:
+
+```bash
+# Analyze single file
+python -m llm_judge --from-results data/judge_et_20260127-143052.jsonl
+
+# Analyze multiple files (supports glob patterns)
+python -m llm_judge --from-results data/judge_et_*.jsonl
+
+# Analyze all results
+python -m llm_judge --from-results data/judge_*.jsonl
+```
+
+Output includes per-model statistics (mean, std, min, max, distribution) and a model comparison table.
+
+## Step 4: Label Recovery Classification
+
+Classify conversations to recover original generation parameters (industry, problem type, channel, agent experience, agent type). This enables evaluation of how well models preserve the intended characteristics.
+
+```bash
+# Run classification on combined conversations
+python -m label_recovery data/combined_et.json --stats
+
+# Use different provider/model
+python -m label_recovery data/combined_et.json --provider groq -m llama-3.3-70b-versatile
+
+# Specify output path
+python -m label_recovery data/combined_et.json -o results/label_recovery_et.jsonl
+```
+
+Output is JSONL with classifications for each conversation:
+```json
+{
+  "conversation_id": 0,
+  "generator_model": "gpt-4.1-mini",
+  "industry": "e-commerce",
+  "problem": "payment_issue",
+  "channel": "chat",
+  "agent_experience": "senior",
+  "agent_type": "human",
+  "explanation": "...",
+  "source_file": "data/combined_et.json"
+}
+```
+
+**Classification categories:**
+- **Industry**: 40+ specific industries (manufacturing, e-commerce, retail, automotive, etc.)
+- **Problem**: 20 types (create_account, delete_account, payment_issue, complaint, etc.)
+- **Channel**: email, chat
+- **Agent Experience**: junior, senior
+- **Agent Type**: human, bot
+
+### Analyze Existing Results
+
+Load and analyze existing JSONL results without re-running classification:
+
+```bash
+# Analyze single or multiple files (supports glob patterns)
+python -m label_recovery --from-results data/label_recovery_*.jsonl
+```
+
+### Evaluate Against Ground Truth
+
+Compare predictions against ground truth configuration files to calculate accuracy and F1 scores:
+
+```bash
+# Evaluate predictions against ground truth
+python -m label_recovery --evaluate data/label_recovery_*.jsonl --ground-truth data/config.json
+```
+
+**Ground truth JSON format:**
+```json
+[
+  {
+    "ticket_id": "id_0",
+    "config": {
+      "industry": "e-commerce",
+      "problem": "payment_issue",
+      "channel": "chat",
+      "agent_experience": "senior",
+      "agent_type": "human"
+    }
+  }
+]
+```
+
+The evaluation displays Rich tables showing:
+- Overall accuracy and F1 scores per category
+- Detailed per-category breakdown with macro and weighted F1
+
+## Environment Variables
+
+```bash
+OPENAI_API_KEY=sk-...           # Required for OpenAI provider
+OPENAI_BASE_URL=...             # Optional, defaults to EU endpoint
+GROQ_API_KEY=gsk_...            # Required for Groq provider
+```
