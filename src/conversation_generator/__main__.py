@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -37,8 +38,8 @@ def parse_args() -> argparse.Namespace:
         "-o",
         "--output",
         type=str,
-        default="data/conversations.jsonl",
-        help="Output file path (default: data/conversations.jsonl)",
+        default=None,
+        help="Output file path (default: data/{model}_{lang}_{datetime}.jsonl)",
     )
     parser.add_argument(
         "-p",
@@ -87,6 +88,16 @@ async def main() -> None:
 
     config_fn = make_config_fn(args.language)
 
+    # Determine language for filename (use "mixed" if random)
+    lang_for_filename = args.language if args.language else "mixed"
+
+    # Build output path with model, language, and datetime if not specified
+    if args.output is None:
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        output_path = f"data/{args.model}_{lang_for_filename}_{timestamp}.jsonl"
+    else:
+        output_path = args.output
+
     if args.count == 1:
         # Single generation
         result = await generator.generate(config=config_fn())
@@ -103,9 +114,9 @@ async def main() -> None:
             json.dumps(r, ensure_ascii=False) for r in results
         )
 
-    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.output).write_text(output + "\n", encoding="utf-8")
-    print(f"Wrote {args.count} conversation(s) to {args.output}", file=sys.stderr)
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).write_text(output + "\n", encoding="utf-8")
+    print(f"Wrote {args.count} conversation(s) to {output_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
