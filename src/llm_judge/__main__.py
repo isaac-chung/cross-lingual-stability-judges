@@ -52,7 +52,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         choices=["low", "medium", "high"],
         default=None,
-        help="Reasoning effort for o-series models (default: medium for o-series)",
+        help="Reasoning effort for compatible models",
     )
     parser.add_argument(
         "--provider",
@@ -113,13 +113,13 @@ def get_judge_model_filename(model: str, reasoning_effort: str | None) -> str:
 
     Args:
         model: Model name.
-        reasoning_effort: Reasoning effort for o-series models.
+        reasoning_effort: Reasoning effort for compatible models.
 
     Returns:
-        Model name with reasoning effort suffix for o-series models.
+        Model name with reasoning effort suffix if provided.
     """
     sanitized = sanitize_model_name(model)
-    if reasoning_effort and model.startswith("o"):
+    if reasoning_effort:
         return f"{sanitized}-{reasoning_effort}"
     return sanitized
 
@@ -129,12 +129,12 @@ def get_judge_model_name(model: str, reasoning_effort: str | None) -> str:
 
     Args:
         model: Model name.
-        reasoning_effort: Reasoning effort for o-series models.
+        reasoning_effort: Reasoning effort for compatible models.
 
     Returns:
-        Model name with reasoning effort suffix for o-series models.
+        Model name with reasoning effort suffix if provided.
     """
-    if reasoning_effort and model.startswith("o"):
+    if reasoning_effort:
         return f"{model}-{reasoning_effort}"
     return model
 
@@ -328,10 +328,8 @@ def main() -> None:
     with open(input_path, encoding="utf-8") as f:
         grouped_data = json.load(f)
 
-    # Set default reasoning effort for o-series models
+    # Use reasoning effort if specified
     reasoning_effort = args.reasoning_effort
-    if reasoning_effort is None and args.model.startswith("o"):
-        reasoning_effort = "medium"
 
     # Initialize judge
     judge = LLMJudge(
