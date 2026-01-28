@@ -96,6 +96,49 @@ def extract_language(input_path: Path) -> str:
     return "unknown"
 
 
+def sanitize_model_name(model: str) -> str:
+    """Sanitize model name for use in filename.
+
+    Args:
+        model: Model name (may contain slashes).
+
+    Returns:
+        Sanitized model name with slashes replaced by dashes.
+    """
+    return model.replace("/", "-")
+
+
+def get_judge_model_filename(model: str, reasoning_effort: str | None) -> str:
+    """Get judge model name for filename.
+
+    Args:
+        model: Model name.
+        reasoning_effort: Reasoning effort for o-series models.
+
+    Returns:
+        Model name with reasoning effort suffix for o-series models.
+    """
+    sanitized = sanitize_model_name(model)
+    if reasoning_effort and model.startswith("o"):
+        return f"{sanitized}-{reasoning_effort}"
+    return sanitized
+
+
+def get_judge_model_name(model: str, reasoning_effort: str | None) -> str:
+    """Get judge model name for result field.
+
+    Args:
+        model: Model name.
+        reasoning_effort: Reasoning effort for o-series models.
+
+    Returns:
+        Model name with reasoning effort suffix for o-series models.
+    """
+    if reasoning_effort and model.startswith("o"):
+        return f"{model}-{reasoning_effort}"
+    return model
+
+
 def print_stats(results: list[dict], generator_models: list[str]) -> None:
     """Print summary statistics."""
     print("\n--- Evaluation Statistics ---", file=sys.stderr)
@@ -320,11 +363,13 @@ def main() -> None:
     print("", file=sys.stderr)  # Newline after progress
 
     # Build results with metadata
+    judge_model = get_judge_model_name(args.model, reasoning_effort)
     results = []
     for (generator_model, conv_idx, conv), evaluation in zip(all_convs, evaluations):
         results.append({
             "conversation_id": conv_idx,
             "generator_model": generator_model,
+            "judge_model": judge_model,
             "G": evaluation.G,
             "R": evaluation.R,
             "C": evaluation.C,
@@ -341,7 +386,8 @@ def main() -> None:
     if args.output is None:
         lang = extract_language(input_path)
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        output_path = Path(f"data/judge_{lang}_{timestamp}.jsonl")
+        model_filename = get_judge_model_filename(args.model, reasoning_effort)
+        output_path = Path(f"data/judge_{model_filename}_{lang}_{timestamp}.jsonl")
     else:
         output_path = Path(args.output)
 

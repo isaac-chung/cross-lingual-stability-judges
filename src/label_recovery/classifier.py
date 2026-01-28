@@ -38,6 +38,16 @@ class LabelRecoveryClassifier:
         self.reasoning_effort = reasoning_effort
         self.client = self._create_client()
 
+    def _get_judge_model_name(self) -> str:
+        """Get judge model name including reasoning effort if applicable.
+
+        Returns:
+            Model name, with reasoning effort suffix for o-series models.
+        """
+        if self.reasoning_effort and self.model.startswith("o"):
+            return f"{self.model}-{self.reasoning_effort}"
+        return self.model
+
     def _create_client(self) -> OpenAI:
         """Create client based on provider."""
         if self.provider == "groq":
@@ -133,6 +143,7 @@ class LabelRecoveryClassifier:
         return ClassificationResult(
             conversation_id=conversation_id,
             generator_model=generator_model,
+            judge_model=self._get_judge_model_name(),
             industry=parsed_result.industry,
             problem=parsed_result.problem,
             channel=parsed_result.channel,
@@ -203,6 +214,7 @@ Respond ONLY with the JSON object, no additional text."""
         return ClassificationResult(
             conversation_id=conversation_id,
             generator_model=generator_model,
+            judge_model=self._get_judge_model_name(),
             industry=parsed_result.industry,
             problem=parsed_result.problem,
             channel=parsed_result.channel,
@@ -253,6 +265,7 @@ Respond ONLY with the JSON object, no additional text."""
             return ClassificationResult(
                 conversation_id=conversation_id,
                 generator_model=generator_model,
+                judge_model=self._get_judge_model_name(),
                 error=str(e),
                 processing_time=time.time() - start_time,
                 source_file=source_file,

@@ -42,6 +42,7 @@ class ClassificationResult:
 
     conversation_id: int
     generator_model: str
+    judge_model: str = "unknown"
     industry: str | None = None
     problem: str | None = None
     channel: str | None = None
@@ -67,6 +68,7 @@ class ClassificationResult:
         return {
             "conversation_id": self.conversation_id,
             "generator_model": self.generator_model,
+            "judge_model": self.judge_model,
             "industry": self.industry,
             "problem": self.problem,
             "channel": self.channel,
@@ -84,6 +86,7 @@ class ClassificationResult:
         return cls(
             conversation_id=data["conversation_id"],
             generator_model=data.get("generator_model", "unknown"),
+            judge_model=data.get("judge_model", "unknown"),
             industry=data.get("industry"),
             problem=data.get("problem"),
             channel=data.get("channel"),

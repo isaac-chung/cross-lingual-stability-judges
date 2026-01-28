@@ -76,6 +76,7 @@ Output is JSONL with scores for each conversation:
 {
   "conversation_id": 0,
   "generator_model": "gpt-4.1-mini",
+  "judge_model": "gpt-5-mini",
   "G": 4, "R": 3, "C": 3, "F": 2,
   "explanation": "...",
   "source_file": "data/combined_et.json"
@@ -125,6 +126,7 @@ Output is JSONL with classifications for each conversation:
 {
   "conversation_id": 0,
   "generator_model": "gpt-4.1-mini",
+  "judge_model": "gpt-5-mini",
   "industry": "e-commerce",
   "problem": "payment_issue",
   "channel": "chat",
@@ -179,6 +181,33 @@ python -m label_recovery --evaluate data/label_recovery_*.jsonl --ground-truth d
 The evaluation displays Rich tables showing:
 - Overall accuracy and F1 scores per category
 - Detailed per-category breakdown with macro and weighted F1
+
+## Step 5: Judge Ablation Analysis
+
+Compare label recovery results from different judge models to analyze judge consistency and inter-judge agreement.
+
+```bash
+# Compare results from different judge models
+python -m judge_ablation data/label_recovery_*.jsonl --ground-truth data/combined_et.json
+
+# Save detailed results to JSON
+python -m judge_ablation data/label_recovery_*.jsonl --ground-truth config.json -o results.json
+
+# Load and display saved analysis results
+python -m judge_ablation --from-results results.json
+```
+
+The analysis displays:
+- **Overall Comparison Table**: Average accuracy and std dev per judge model
+- **Per-Category Tables**: Accuracy breakdown by category (industry, problem, channel, etc.)
+- **Inter-Judge Agreement**: Pairwise agreement between judges on same conversations
+
+**Output filename format:**
+- Label recovery: `data/label_recovery_{model}_{lang}_{datetime}.jsonl`
+- LLM judge: `data/judge_{model}_{lang}_{datetime}.jsonl`
+
+For o-series models with reasoning effort, the model name includes the effort level:
+- `data/label_recovery_o3-medium_et_20260127-143052.jsonl`
 
 ## Environment Variables
 

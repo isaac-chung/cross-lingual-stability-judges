@@ -124,6 +124,34 @@ def extract_language(input_path: Path) -> str:
     return "unknown"
 
 
+def sanitize_model_name(model: str) -> str:
+    """Sanitize model name for use in filename.
+
+    Args:
+        model: Model name (may contain slashes).
+
+    Returns:
+        Sanitized model name with slashes replaced by dashes.
+    """
+    return model.replace("/", "-")
+
+
+def get_judge_model_filename(model: str, reasoning_effort: str | None) -> str:
+    """Get judge model name for filename.
+
+    Args:
+        model: Model name.
+        reasoning_effort: Reasoning effort for o-series models.
+
+    Returns:
+        Model name with reasoning effort suffix for o-series models.
+    """
+    sanitized = sanitize_model_name(model)
+    if reasoning_effort and model.startswith("o"):
+        return f"{sanitized}-{reasoning_effort}"
+    return sanitized
+
+
 def load_results_from_jsonl(paths: list[str]) -> list[ClassificationResult]:
     """Load classification results from JSONL files.
 
@@ -363,7 +391,8 @@ def main() -> None:
     if args.output is None:
         lang = extract_language(input_path)
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        output_path = Path(f"data/label_recovery_{lang}_{timestamp}.jsonl")
+        model_name = get_judge_model_filename(args.model, reasoning_effort)
+        output_path = Path(f"data/label_recovery_{model_name}_{lang}_{timestamp}.jsonl")
     else:
         output_path = Path(args.output)
 
