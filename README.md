@@ -27,7 +27,7 @@ python -m conversation_generator -n 100 -l fi --provider groq -m qwen/qwen3-32b
 python -m conversation_generator --help        # all options
 ```
 
-Output files are named `{model}_{lang}_{datetime}.jsonl` (e.g., `gpt-4.1-mini_et_20260127-143052.jsonl`).
+Output files are named `convo_{model}_{lang}_{datetime}.jsonl` (e.g., `convo_gpt-4.1-mini_et_20260127-143052.jsonl`).
 
 ## Step 2: Combine and Validate
 
@@ -35,10 +35,10 @@ Combine JSONL files from multiple generation runs into a single JSON file groupe
 
 ```bash
 # Combine all languages
-python -m conversation_parser data/*.jsonl --stats
+python -m conversation_parser data/convo_*.jsonl --stats
 
 # Combine single language files
-python -m conversation_parser data/*_et_*.jsonl --stats
+python -m conversation_parser data/convo_*_et_*.jsonl --stats
 ```
 
 Output is JSON grouped by model:
@@ -58,7 +58,7 @@ Output files are named `combined_{lang}.json`:
 
 Use `--stats` alone to validate without writing output:
 ```bash
-python -m conversation_parser data/*.jsonl --stats
+python -m conversation_parser data/convo_*.jsonl --stats
 ```
 
 ## Step 3: LLM-as-a-Judge Evaluation

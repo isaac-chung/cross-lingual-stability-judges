@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
         "--output",
         type=str,
         default=None,
-        help="Output file path (default: data/{model}_{lang}_{datetime}.jsonl)",
+        help="Output file path (default: data/convo_{model}_{lang}_{datetime}.jsonl)",
     )
     parser.add_argument(
         "-p",
@@ -101,7 +101,7 @@ async def main() -> None:
     # Build output path with model, language, and datetime if not specified
     if args.output is None:
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        output_path = f"data/{args.model}_{lang_for_filename}_{timestamp}.jsonl"
+        output_path = f"data/convo_{args.model}_{lang_for_filename}_{timestamp}.jsonl"
     else:
         output_path = args.output
 
