@@ -18,6 +18,9 @@ dependencies = [
     "rich>=13.0",
     "scikit-learn>=1.4",
     "numpy>=1.26",
+    "datasets>=2.16.0",     # HuggingFace datasets
+    "huggingface-hub>=0.20.0",  # HF hub operations
+    "tqdm>=4.65.0",         # Progress bars
 ]
 
 [project.optional-dependencies]
@@ -31,7 +34,7 @@ notebook = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/conversation_generator", "src/conversation_parser", "src/llm_judge", "src/label_recovery", "src/judge_ablation"]
+packages = ["src/conversation_generator", "src/conversation_parser", "src/llm_judge", "src/label_recovery", "src/judge_ablation", "src/hf_uploader"]
 
 [tool.ruff]
 line-length = 88
