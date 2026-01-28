@@ -209,6 +209,45 @@ The analysis displays:
 For o-series models with reasoning effort, the model name includes the effort level:
 - `data/label_recovery_o3-medium_et_20260127-143052.jsonl`
 
+## Step 6: Ranking Inversions Analysis
+
+Analyze cross-language ranking stability by computing ranking correlations (Kendall tau, Spearman rho) and pairwise inversions across language pairs.
+
+```bash
+# Analyze judge results across languages
+python -m ranking_inversions data/judge_*.jsonl --languages et fi hu en
+
+# Combined analysis with label recovery
+python -m ranking_inversions --judge data/judge_*.jsonl \
+                              --label-recovery data/label_recovery_*.jsonl \
+                              --ground-truth data/combined_et.json
+
+# Quick analysis without bootstrap/permutation tests (faster)
+python -m ranking_inversions data/judge_*.jsonl --no-bootstrap --no-permutation
+
+# Save results for later analysis
+python -m ranking_inversions data/judge_*.jsonl --output analysis.json
+
+# Display previously saved results
+python -m ranking_inversions --from-results analysis.json
+```
+
+The analysis computes:
+- **Kendall τ** and **Spearman ρ** correlations between model rankings across language pairs
+- **Ranking inversions**: count of model pairs with different relative ordering between languages
+- **Bootstrap confidence intervals**: uncertainty estimates for correlations (default: 2000 iterations)
+- **Permutation tests**: statistical significance of inversions (default: 5000 iterations)
+
+**Input metrics:**
+- From llm_judge: G (Grammar), R (Readability), C (Coherence), F (Fluency)
+- From label_recovery: LRA (Label Recovery Accuracy)
+
+**Output displays:**
+- Rich tables showing pairwise comparisons between language pairs
+- Per-metric correlation statistics with confidence intervals
+- Model ranking tables by language and metric
+- Statistical significance indicators
+
 ## Environment Variables
 
 ```bash
