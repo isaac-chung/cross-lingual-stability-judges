@@ -1,5 +1,6 @@
-# cross-lingual-stability-judges
-2026 EACL MME Workshop: Cross-Lingual Stability of LLM Judges Under Controlled Generation: Evidence from Finno-Ugric Languages
+# Cross-Lingual Stability of LLM Judges Under Controlled Generation: Evidence from Finno-Ugric Languages
+
+Code for the [2026 EACL MME Workshop](https://multilingual-multicultural-evaluation.github.io/) paper: [OpenReview Link](https://openreview.net/forum?id=OgcrR6WgWp)
 
 ## Setup
 
