@@ -7,7 +7,15 @@ import random
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from openai import AsyncOpenAI
+# Handle imports for both module usage and CLI usage
+try:
+    from ..common.llm_client import create_async_client
+except ImportError:
+    # For CLI usage, add parent directory to path
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from common.llm_client import create_async_client
 
 from .config import (
     ConversationConfig,
@@ -119,29 +127,34 @@ def evaluate_config(config: ConversationConfig) -> dict[str, PromptPart]:
 
 
 class ConversationGenerator:
-    """Generates synthetic customer support conversations using OpenAI."""
+    """Generates synthetic customer support conversations using liteLLM."""
 
     def __init__(
         self,
         model: str = "gpt-4.1-mini",
         api_key: str | None = None,
         base_url: str | None = None,
+        provider: str = "openai",
     ):
         """Initialize the generator.
 
         Args:
-            model: OpenAI model to use for generation.
-            api_key: OpenAI API key. If not provided, uses OPENAI_API_KEY env var.
-            base_url: OpenAI API base URL. If not provided, uses OPENAI_BASE_URL
+            model: Model to use for generation.
+            api_key: API key. If not provided, uses OPENAI_API_KEY env var.
+            base_url: API base URL. If not provided, uses OPENAI_BASE_URL
                      env var or defaults to EU endpoint.
+            provider: Provider name (openai, groq, etc.).
         """
         self.model = model
+        self.provider = provider
 
-        # Default to EU endpoint for the service account key
-        if base_url is None:
+        # Default to EU endpoint for OpenAI
+        if base_url is None and provider == "openai":
             base_url = os.getenv("OPENAI_BASE_URL", "https://eu.api.openai.com/v1")
 
-        self.client = AsyncOpenAI(
+        self.client = create_async_client(
+            model=model,
+            provider=provider,
             api_key=api_key or os.getenv("OPENAI_API_KEY"),
             base_url=base_url,
         )

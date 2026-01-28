@@ -9,10 +9,18 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from openai import OpenAI
 from rich.console import Console
 from rich.table import Table
 
+# Handle imports for both module usage and CLI usage
+try:
+    from ..common.llm_client import create_sync_client
+except ImportError:
+    # For CLI usage, add parent directory to path
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from common.llm_client import create_sync_client
 from .models import ClassificationResult, ConversationClassification
 from .prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 
@@ -31,7 +39,7 @@ class LabelRecoveryClassifier:
         Args:
             model: Model to use for classification.
             provider: API provider ("openai" or "groq").
-            reasoning_effort: Reasoning effort for o-series models.
+            reasoning_effort: Reasoning effort for compatible models.
         """
         self.model = model
         self.provider = provider
@@ -42,28 +50,32 @@ class LabelRecoveryClassifier:
         """Get judge model name including reasoning effort if applicable.
 
         Returns:
-            Model name, with reasoning effort suffix for o-series models.
+            Model name, with reasoning effort suffix if provided.
         """
-        if self.reasoning_effort and self.model.startswith("o"):
+        if self.reasoning_effort:
             return f"{self.model}-{self.reasoning_effort}"
         return self.model
 
-    def _create_client(self) -> OpenAI:
-        """Create client based on provider."""
+    def _create_client(self):
+        """Create unified client based on provider."""
         if self.provider == "groq":
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
                 msg = "GROQ_API_KEY environment variable required for Groq provider"
                 raise ValueError(msg)
-            return OpenAI(
+            return create_sync_client(
+                model=self.model,
+                provider="groq",
                 api_key=api_key,
-                base_url="https://api.groq.com/openai/v1",
             )
         else:
             # OpenAI provider (default)
+            api_key = os.getenv("OPENAI_API_KEY")
             base_url = os.getenv("OPENAI_BASE_URL", "https://eu.api.openai.com/v1")
-            return OpenAI(
-                api_key=os.getenv("OPENAI_API_KEY"),
+            return create_sync_client(
+                model=self.model,
+                provider="openai",
+                api_key=api_key,
                 base_url=base_url,
             )
 
@@ -88,7 +100,7 @@ class LabelRecoveryClassifier:
         conversation = "\n".join(formatted_lines)
         return USER_PROMPT_TEMPLATE.format(conversation=conversation)
 
-    def _classify_with_openai(
+    def _classify_unified(
         self,
         messages: list[dict[str, str]],
         conversation_id: int,
@@ -96,7 +108,7 @@ class LabelRecoveryClassifier:
         start_time: float,
         source_file: str | None = None,
     ) -> ClassificationResult:
-        """Classify using OpenAI's responses.parse API.
+        """Classify using unified client with structured output (works for both OpenAI and Groq).
 
         Args:
             messages: List of message dicts for the API.
@@ -114,8 +126,8 @@ class LabelRecoveryClassifier:
             "text_format": ConversationClassification,
         }
 
-        # Add reasoning effort for o-series models
-        if self.reasoning_effort and self.model.startswith("o"):
+        # Add reasoning effort if provided
+        if self.reasoning_effort:
             kwargs["reasoning_effort"] = self.reasoning_effort
 
         # Retry with exponential backoff
@@ -139,77 +151,6 @@ class LabelRecoveryClassifier:
         parsed_result = response.output_parsed
         if parsed_result is None:
             raise ValueError("Failed to parse classification response")
-
-        return ClassificationResult(
-            conversation_id=conversation_id,
-            generator_model=generator_model,
-            judge_model=self._get_judge_model_name(),
-            industry=parsed_result.industry,
-            problem=parsed_result.problem,
-            channel=parsed_result.channel,
-            agent_experience=parsed_result.agent_experience,
-            agent_type=parsed_result.agent_type,
-            explanation=parsed_result.explanation,
-            processing_time=time.time() - start_time,
-            source_file=source_file,
-        )
-
-    def _classify_with_groq(
-        self,
-        messages: list[dict[str, str]],
-        conversation_id: int,
-        generator_model: str,
-        start_time: float,
-        source_file: str | None = None,
-    ) -> ClassificationResult:
-        """Classify using Groq's chat completions API with JSON mode.
-
-        Args:
-            messages: List of message dicts for the API.
-            conversation_id: Unique identifier for the conversation.
-            generator_model: Model that generated the conversation.
-            start_time: Start time for processing time calculation.
-            source_file: Source file path.
-
-        Returns:
-            ClassificationResult with classification labels and metadata.
-        """
-        json_schema_instruction = """
-
-IMPORTANT: You must respond with a valid JSON object containing these exact fields:
-{
-    "industry": "<industry from the list>",
-    "problem": "<problem type from the list>",
-    "channel": "<email or chat>",
-    "agent_experience": "<junior or senior>",
-    "agent_type": "<human or bot>",
-    "explanation": "<brief justification for classifications>"
-}
-
-Respond ONLY with the JSON object, no additional text."""
-
-        # Modify the system message to include JSON instruction
-        modified_messages = messages.copy()
-        modified_messages[0] = {
-            "role": "system",
-            "content": messages[0]["content"] + json_schema_instruction,
-        }
-
-        # Use Groq's chat completions API with JSON mode
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=modified_messages,
-            response_format={"type": "json_object"},
-            temperature=0.7,
-            top_p=0.8,
-        )
-
-        # Parse JSON response
-        raw_response = response.choices[0].message.content
-        parsed_json = json.loads(raw_response)
-
-        # Validate with Pydantic model
-        parsed_result = ConversationClassification(**parsed_json)
 
         return ClassificationResult(
             conversation_id=conversation_id,
@@ -252,14 +193,10 @@ Respond ONLY with the JSON object, no additional text."""
                 {"role": "user", "content": user_prompt},
             ]
 
-            if self.provider == "groq":
-                return self._classify_with_groq(
-                    messages, conversation_id, generator_model, start_time, source_file
-                )
-            else:
-                return self._classify_with_openai(
-                    messages, conversation_id, generator_model, start_time, source_file
-                )
+            # Use unified method for both providers
+            return self._classify_unified(
+                messages, conversation_id, generator_model, start_time, source_file
+            )
 
         except Exception as e:
             return ClassificationResult(

@@ -6,9 +6,17 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
+# Handle imports for both module usage and CLI usage
+try:
+    from ..common.llm_client import create_sync_client
+except ImportError:
+    # For CLI usage, add parent directory to path
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from common.llm_client import create_sync_client
 from .prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 
 
@@ -36,28 +44,32 @@ class LLMJudge:
         Args:
             model: Model to use for evaluation.
             provider: API provider ("openai" or "groq").
-            reasoning_effort: Reasoning effort for o-series models ("low", "medium", "high").
+            reasoning_effort: Reasoning effort for compatible models ("low", "medium", "high").
         """
         self.model = model
         self.provider = provider
         self.reasoning_effort = reasoning_effort
         self.client = self._create_client()
 
-    def _create_client(self) -> OpenAI:
-        """Create client based on provider."""
+    def _create_client(self):
+        """Create unified client based on provider."""
         if self.provider == "groq":
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
                 raise ValueError("GROQ_API_KEY environment variable required for Groq provider")
-            return OpenAI(
+            return create_sync_client(
+                model=self.model,
+                provider="groq",
                 api_key=api_key,
-                base_url="https://api.groq.com/openai/v1",
             )
         else:
             # OpenAI provider (default)
+            api_key = os.getenv("OPENAI_API_KEY")
             base_url = os.getenv("OPENAI_BASE_URL", "https://eu.api.openai.com/v1")
-            return OpenAI(
-                api_key=os.getenv("OPENAI_API_KEY"),
+            return create_sync_client(
+                model=self.model,
+                provider="openai",
+                api_key=api_key,
                 base_url=base_url,
             )
 
@@ -107,8 +119,8 @@ class LLMJudge:
             "text_format": ConversationEvaluation,
         }
 
-        # Add reasoning effort for o-series models
-        if self.reasoning_effort and self.model.startswith("o"):
+        # Add reasoning effort if provided
+        if self.reasoning_effort:
             kwargs["reasoning_effort"] = self.reasoning_effort
 
         # Retry with exponential backoff

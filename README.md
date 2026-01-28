@@ -9,14 +9,21 @@ pip install -e .
 cp .env.example .env  # then add your OPENAI_API_KEY
 ```
 
+This project uses [liteLLM](https://docs.litellm.ai/) for unified LLM provider support, enabling seamless switching between OpenAI, Groq, Anthropic, and other providers while maintaining identical APIs and functionality. Use the `--provider` flag to switch between providers (OpenAI, Groq, etc.) without changing any other code.
+
 ## Step 1: Generate Conversations
 
 Generate synthetic customer support conversations in Finno-Ugric languages (Estonian, Finnish, Hungarian) and English.
 
 ```bash
+# OpenAI provider (default)
 python -m conversation_generator -n 100 -l et  # 100 Estonian conversations
 python -m conversation_generator -n 100 -l fi  # 100 Finnish conversations
 python -m conversation_generator -n 100 -l hu  # 100 Hungarian conversations
+
+# Groq provider with different models
+python -m conversation_generator -n 100 -l fi --provider groq -m qwen/qwen3-32b
+
 python -m conversation_generator --help        # all options
 ```
 
@@ -56,17 +63,17 @@ python -m conversation_parser data/*.jsonl --stats
 
 ## Step 3: LLM-as-a-Judge Evaluation
 
-Evaluate conversations on linguistic quality using an LLM judge. Supports OpenAI and Groq providers.
+Evaluate conversations on linguistic quality using an LLM judge. Supports multiple providers via liteLLM.
 
 ```bash
-# Evaluate Estonian conversations (default: gpt-5-mini)
+# OpenAI provider (default)
 python -m llm_judge data/combined_et.json --stats
 
-# Use different reasoning effort for o-series models
+# Use different reasoning effort (supported by compatible models)
 python -m llm_judge data/combined_fi.json --reasoning-effort high --stats
 
-# Use Groq provider with Llama model
-python -m llm_judge data/combined_hu.json --provider groq -m llama-3.3-70b-versatile
+# Groq provider with various models
+python -m llm_judge data/combined_et.json --provider groq -m qwen/qwen3-32b
 
 # Specify output path
 python -m llm_judge data/combined_hu.json -o results/judge_hu.jsonl
@@ -112,11 +119,11 @@ Output includes per-model statistics (mean, std, min, max, distribution) and a m
 Classify conversations to recover original generation parameters (industry, problem type, channel, agent experience, agent type). This enables evaluation of how well models preserve the intended characteristics.
 
 ```bash
-# Run classification on combined conversations
+# OpenAI provider (default)
 python -m label_recovery data/combined_et.json --stats
 
-# Use different provider/model
-python -m label_recovery data/combined_et.json --provider groq -m llama-3.3-70b-versatile
+# Groq provider with various models
+python -m label_recovery data/combined_fi.json --provider groq -m qwen/qwen3-32b
 
 # Specify output path
 python -m label_recovery data/combined_et.json -o results/label_recovery_et.jsonl
@@ -207,7 +214,7 @@ The analysis displays:
 - Label recovery: `data/label_recovery_{model}_{lang}_{datetime}.jsonl`
 - LLM judge: `data/judge_{model}_{lang}_{datetime}.jsonl`
 
-For o-series models with reasoning effort, the model name includes the effort level:
+For models using reasoning effort, the model name includes the effort level:
 - `data/label_recovery_o3-medium_et_20260127-143052.jsonl`
 
 ## Step 6: Ranking Inversions Analysis
@@ -251,8 +258,13 @@ The analysis computes:
 
 ## Environment Variables
 
+This project uses liteLLM for multi-provider support. Set the appropriate API keys for your desired providers:
+
 ```bash
+# OpenAI (default provider)
 OPENAI_API_KEY=sk-...           # Required for OpenAI provider
 OPENAI_BASE_URL=...             # Optional, defaults to EU endpoint
+
+# Groq
 GROQ_API_KEY=gsk_...            # Required for Groq provider
 ```
