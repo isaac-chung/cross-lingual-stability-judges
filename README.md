@@ -9,9 +9,7 @@ pip install -e .
 cp .env.example .env  # then add your OPENAI_API_KEY
 ```
 
-This project uses [liteLLM](https://docs.litellm.ai/) for unified LLM provider support, enabling seamless switching between OpenAI, Groq, Anthropic, and other providers while maintaining identical APIs and functionality.
-
-> **🆕 Migration Update**: All tools now support multiple LLM providers via liteLLM while maintaining full backward compatibility. Use the `--provider` flag to switch between providers (OpenAI, Groq, etc.) without changing any other code.
+This project uses [liteLLM](https://docs.litellm.ai/) for unified LLM provider support, enabling seamless switching between OpenAI, Groq, Anthropic, and other providers while maintaining identical APIs and functionality. Use the `--provider` flag to switch between providers (OpenAI, Groq, etc.) without changing any other code.
 
 ## Step 1: Generate Conversations
 
