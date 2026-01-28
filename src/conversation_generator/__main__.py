@@ -61,6 +61,12 @@ def parse_args() -> argparse.Namespace:
         default="https://eu.api.openai.com/v1",
         help="OpenAI API base URL (default: https://eu.api.openai.com/v1)",
     )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default="openai",
+        help="LLM provider (default: openai, options: openai, groq)",
+    )
     return parser.parse_args()
 
 
@@ -84,6 +90,7 @@ async def main() -> None:
     generator = ConversationGenerator(
         model=args.model,
         base_url=args.base_url,
+        provider=args.provider,
     )
 
     config_fn = make_config_fn(args.language)
