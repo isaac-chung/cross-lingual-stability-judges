@@ -21,6 +21,7 @@ from .config import (
     ConversationConfig,
     get_language_name,
     random_config,
+    select_agent_names,
 )
 
 
@@ -42,7 +43,7 @@ Output a JSON object with exactly this structure:
   "subject": "Brief subject line for the conversation",
   "messages": [
     {
-      "from_name": "Customer" or "Agent 1" or "Agent 2",
+      "from_name": "Customer" or agent name from provided list (e.g., "Amanda S."),
       "from_type": "customer" or "agent",
       "message": "The message content"
     }
@@ -51,6 +52,9 @@ Output a JSON object with exactly this structure:
 
 Rules:
 - The first message must be from the customer
+- For customer messages, use "Customer" in the from_name field
+- For agent messages, use the actual agent name from the provided list in the from_name field (e.g., "Amanda S." instead of "Agent 1")
+- If multiple agents are involved, each agent should consistently use their assigned name throughout the conversation
 - Agent responses should be helpful and professional
 - Messages should feel natural and conversational
 - Use the specified language for ALL message content
@@ -68,6 +72,7 @@ def build_user_prompt(
     channel: PromptPart,
     agent_experience: PromptPart,
     agent_type: PromptPart,
+    agent_names: PromptPart,
 ) -> str:
     """Build the user prompt from evaluated config parts."""
     return f"""Generate a customer support conversation with these parameters:
@@ -78,6 +83,7 @@ def build_user_prompt(
 - Customer problem: {problem}
 - Number of messages: {n_messages}
 - Number of agents: {n_agents}
+- Agent names: {agent_names}
 - Channel: {channel}
 - Agent experience level: {agent_experience}
 - Agent type: {agent_type}
@@ -89,6 +95,11 @@ def evaluate_config(config: ConversationConfig) -> dict[str, PromptPart]:
     """Convert a config dict into PromptPart objects with descriptive prompts."""
     language_code = config.get("language", "en-us")
     language_name = get_language_name(language_code)
+
+    # Select agent names based on n_agents
+    n_agents = config.get("n_agents", 1)
+    agent_names_list = select_agent_names(n_agents)
+    agent_names_str = ", ".join(agent_names_list)
 
     return {
         "language": PromptPart(
@@ -108,8 +119,12 @@ def evaluate_config(config: ConversationConfig) -> dict[str, PromptPart]:
             prompt=str(config.get("n_messages", 6)),
         ),
         "n_agents": PromptPart(
-            value=config.get("n_agents", 1),
-            prompt=f"{config.get('n_agents', 1)} agent(s)",
+            value=n_agents,
+            prompt=f"{n_agents} agent(s)",
+        ),
+        "agent_names": PromptPart(
+            value=agent_names_list,
+            prompt=agent_names_str,
         ),
         "channel": PromptPart(
             value=config.get("channel", "chat"),
@@ -186,6 +201,7 @@ class ConversationGenerator:
             problem=evaluated["problem"],
             n_messages=evaluated["n_messages"],
             n_agents=evaluated["n_agents"],
+            agent_names=evaluated["agent_names"],
             channel=evaluated["channel"],
             agent_experience=evaluated["agent_experience"],
             agent_type=evaluated["agent_type"],

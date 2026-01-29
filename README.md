@@ -13,7 +13,7 @@ This project uses [liteLLM](https://docs.litellm.ai/) for unified LLM provider s
 
 ## Step 1: Generate Conversations
 
-Generate synthetic customer support conversations in Finno-Ugric languages (Estonian, Finnish, Hungarian) and English.
+Generate synthetic customer support conversations in Finno-Ugric languages (Estonian, Finnish, Hungarian) and English. Agent messages use actual agent names (e.g., "Amanda S.") instead of generic identifiers like "Agent 1".
 
 ```bash
 # OpenAI provider (default)
@@ -382,7 +382,7 @@ print(dataset["et"][0])
 # {
 #   'conversation_id': 'gpt-4.1-mini_et_20260127-173115_0000',
 #   'message_id': 0,
-#   'from_name': 'Klient',
+#   'from_name': 'Klient',  # Customer message
 #   'from_type': 'customer',
 #   'message': 'Tere! Minu tellimus pidi juba kohal olema...',
 #   'subject': 'Saatmise hilinemine tellimusele',
@@ -391,6 +391,13 @@ print(dataset["et"][0])
 #   'industry': 'Music & Audio',
 #   'problem': 'Shipping delay',
 #   # ... plus other metadata
+# }
+#
+# # Agent message example:
+# {
+#   'from_name': 'Amanda S.', 
+#   'from_type': 'agent',
+#   'message': '...',
 # }
 ```
 
