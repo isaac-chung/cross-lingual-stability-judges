@@ -5,16 +5,16 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-# Pattern to extract language from filename: {model}_{lang}_{datetime}.jsonl
-FILENAME_PATTERN = re.compile(r"^.+_([a-z]{2}(?:-[a-z]{2})?)_\d{8}-\d{6}\.jsonl$")
+# Pattern to extract language from filename: convo_{model}_{lang}_{datetime}.jsonl
+FILENAME_PATTERN = re.compile(r"^convo_.+_([a-z]{2}(?:-[a-z]{2})?)_\d{8}-\d{6}\.jsonl$")
 
 
 def extract_language_from_filename(file_path: Path) -> str | None:
     """Extract language code from filename if it matches the expected pattern.
 
-    Expected format: {model}_{lang}_{datetime}.jsonl
-    Examples: gpt-4.1-mini_et_20260127-143052.jsonl -> "et"
-              claude-3_en-us_20260127-143052.jsonl -> "en-us"
+    Expected format: convo_{model}_{lang}_{datetime}.jsonl
+    Examples: convo_gpt-4.1-mini_et_20260127-143052.jsonl -> "et"
+              convo_claude-3_en-us_20260127-143052.jsonl -> "en-us"
 
     Returns:
         Language code or None if pattern doesn't match.

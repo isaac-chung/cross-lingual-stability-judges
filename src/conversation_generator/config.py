@@ -83,6 +83,24 @@ PROBLEMS: list[str] = [
     "Service cancellation",
 ]
 
+AGENT_NAMES: list[str] = [
+    "Amanda S.",
+    "Robert K.",
+    "Maria L.",
+    "David T.",
+    "Sarah M.",
+    "James W.",
+    "Lisa H.",
+    "Michael B.",
+    "Jessica P.",
+    "Daniel R.",
+    "Emily C.",
+    "Thomas G.",
+    "Anna N.",
+    "Christopher F.",
+    "Laura V.",
+]
+
 LanguageCode = Literal["et", "fi", "hu", "en-us"]
 Channel = Literal["email", "chat"]
 AgentExperience = Literal["junior", "senior"]
@@ -123,3 +141,8 @@ def get_language_name(code: str) -> str:
         if lang_code == code:
             return lang_name
     return code
+
+
+def select_agent_names(n_agents: int) -> list[str]:
+    """Select random agent names based on number of agents."""
+    return random.choices(AGENT_NAMES, k=n_agents)
