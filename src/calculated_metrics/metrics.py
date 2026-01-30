@@ -42,74 +42,25 @@ warnings.filterwarnings('ignore')
 __version__ = "1.0.0"
 
 ##---------------------------------------------------- ESTONIAN WORKFLOW ----------------------------------------------------##
-def get_example_estonian_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None, gpt_mini_file_path: Optional[str] = None):
+def get_example_estonian_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None):
     """Return Estonian conversations as structured ConversationData objects.
     
     Parameters:
     - model: Optional model identifier to filter conversations. If None, returns all conversations.
-    - json_file_path: Optional path to the main JSON file (default: './parsed_conversations.json')
-    - gpt_mini_file_path: Optional path to gpt-4.1-mini JSON file (default: './llm_as_a_judge/ee/parsed_conversations_gpt-4.1-mini.json')
+    - json_file_path: Optional path to the JSON file (default: '../../paper_data/combined_et.json')
     
     Available models:
     1. anthropic.claude-sonnet-4-20250514-v1:0
     2. cohere.command-r-v1:0
-    3. gpt-4.1-mini (from separate file)
+    3. gpt-4.1-mini
     4. meta.llama3-70b-instruct-v1:0
     5. meta.llama3-8b-instruct-v1:0
     6. mistral.mixtral-8x7b-instruct-v0:1
     """
 
-    # Special case: gpt-4.1-mini uses different file with different structure
-    if model == 'gpt-4.1-mini':
-        if gpt_mini_file_path is None:
-            gpt_mini_file_path = './llm_as_a_judge/ee/parsed_conversations_gpt-4.1-mini.json'
-        json_file_path = gpt_mini_file_path
-        try:
-            with open(json_file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-            conversations = []
-            
-            # Structure: data -> list of conversations with comments field
-            conversation_list = data.get('data', [])
-            
-            for conversation_data in conversation_list:
-                comments_data = conversation_data.get('comments', [])
-                
-                if not comments_data:
-                    continue
-
-                # Convert comments to the format expected by ConversationData.from_comments
-                # Include is_agent based on authorIsNotClient field
-                comments = []
-                for comment in comments_data:
-                    comments.append({
-                        'authorName': comment.get('authorName', 'Unknown'),
-                        'comment': comment.get('comment', ''),
-                        'is_agent': comment.get('authorIsNotClient', None)  # Agent if not client
-                    })
-
-                # Create ConversationData directly from structured comments
-                conversation = ConversationData.from_comments(comments)
-
-                if conversation.turns:  # Only add conversations with turns
-                    conversations.append(conversation)
-
-            logger.info(f"✅ Loaded {len(conversations)} Estonian gpt-4.1-mini conversations from JSON file")
-            if len(conversations) == 0:
-                raise FileNotFoundError("No gpt-4.1-mini conversations found in JSON file")
-            return conversations
-            
-        except FileNotFoundError:
-            logger.warning(f"❌ JSON file not found: {json_file_path}")
-            return []
-        except Exception as e:
-            logger.warning(f"❌ Error loading gpt-4.1-mini JSON file: {e}")
-            return []
-
-    # Standard handling for other models
+    # Set default path to paper_data folder
     if json_file_path is None:
-        json_file_path = './parsed_conversations.json'
+        json_file_path = '../../paper_data/combined_et.json'
 
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
@@ -117,23 +68,19 @@ def get_example_estonian_conversations(model: Optional[str] = None, json_file_pa
 
         conversations = []
 
-        # Extract conversations from the JSON data
-        # Structure: results_by_model -> model_name -> list of conversations
-        results_by_model = data.get('results_by_model', {})
-        
+        # New structure: model names as top-level keys, each containing array of conversations
         # Filter by model if specified
         if model is not None:
-            if model not in results_by_model:
-                logger.warning(f"Model '{model}' not found in data. Available models: {list(results_by_model.keys())}")
+            if model not in data:
+                logger.warning(f"Model '{model}' not found in data. Available models: {list(data.keys())}")
                 return []
-            model_dict = {model: results_by_model[model]}
+            model_dict = {model: data[model]}
         else:
-            model_dict = results_by_model
+            model_dict = data
         
         for model_name, model_conversations in model_dict.items():
             for conversation_data in model_conversations:
-                parsed_output = conversation_data.get('parsed_output', {})
-                messages = parsed_output.get('messages', [])
+                messages = conversation_data.get('messages', [])
 
                 if not messages:
                     continue
@@ -233,14 +180,13 @@ def get_example_estonian_conversations(model: Optional[str] = None, json_file_pa
         return [ConversationData.from_string(conv_str) for conv_str in example_conversations_str]
 
 
-def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None, gpt_mini_file_path: Optional[str] = None):
+def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None):
     """Estonian metrics workflow using EstNLTK.
     
     Args:
         model: Model identifier or 'all' to analyze all models
         limit: Optional limit on number of conversations to analyze per model
-        json_file_path: Optional path to the main JSON file
-        gpt_mini_file_path: Optional path to gpt-4.1-mini JSON file
+        json_file_path: Optional path to the JSON file
     """
     # Import here to avoid circular import
     from et_metrics import EstonianConversationMetrics
@@ -270,7 +216,7 @@ def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         model_conversations = {}
         total_conversations = 0
         for model_name in all_models:
-            convos = get_example_estonian_conversations(model=model_name, json_file_path=json_file_path, gpt_mini_file_path=gpt_mini_file_path)
+            convos = get_example_estonian_conversations(model=model_name, json_file_path=json_file_path)
             if convos:
                 if limit:
                     convos = convos[:limit]
@@ -280,7 +226,7 @@ def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         rich_print(f"[green]✅ Loaded {total_conversations} conversations across {len(model_conversations)} models[/green]")
     else:
         # Load single model
-        conversations = get_example_estonian_conversations(model=model, json_file_path=json_file_path, gpt_mini_file_path=gpt_mini_file_path)
+        conversations = get_example_estonian_conversations(model=model, json_file_path=json_file_path)
         if limit:
             conversations = conversations[:limit]
             logger.info(f"🔍 Limited to {len(conversations)} conversations for {model}")
@@ -336,13 +282,12 @@ def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
     rich_print("\n[bold green]🎉 Analysis complete! Check the generated files for detailed results.[/bold green]")
 
 ##---------------------------------------------------- HUNGARIAN WORKFLOW ----------------------------------------------------##
-def get_example_hungarian_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None, gpt_mini_file_path: Optional[str] = None):
+def get_example_hungarian_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None):
     """Return Hungarian conversations as structured ConversationData objects.
     
     Parameters:
     - model: Optional model identifier to filter conversations. If None, returns all conversations.
-    - json_file_path: Optional path to the main JSON file (default: './parsed_conversations_hu.json')
-    - gpt_mini_file_path: Optional path to gpt-4.1-mini JSON file (if separate file exists)
+    - json_file_path: Optional path to the JSON file (default: '../../paper_data/combined_hu.json')
     
     Available models:
     1. anthropic.claude-sonnet-4-20250514-v1:0
@@ -353,11 +298,9 @@ def get_example_hungarian_conversations(model: Optional[str] = None, json_file_p
     6. mistral.mixtral-8x7b-instruct-v0:1
     """
 
-    # Special case: gpt-4.1-mini may use different file if specified
-    if model == 'gpt-4.1-mini' and gpt_mini_file_path is not None:
-        json_file_path = gpt_mini_file_path
-    elif json_file_path is None:
-        json_file_path = './parsed_conversations_hu.json'
+    # Set default path to paper_data folder
+    if json_file_path is None:
+        json_file_path = '../../paper_data/combined_hu.json'
     
     # Define Hungarian speaker pattern
     hungarian_speaker_pattern = r'(Ügynök|Ügyfél|Ügyfélszolgálat|Munkatárs|Agent|Kliens):'
@@ -368,30 +311,19 @@ def get_example_hungarian_conversations(model: Optional[str] = None, json_file_p
 
         conversations = []
 
-        # Extract conversations from the JSON data
-        # Structure: results_by_model -> model_name -> list of conversations
-        results_by_model = data.get('results_by_model', {})
-        
+        # New structure: model names as top-level keys, each containing array of conversations
         # Filter by model if specified
         if model is not None:
-            if model not in results_by_model:
-                logger.warning(f"Model '{model}' not found in data. Available models: {list(results_by_model.keys())}")
+            if model not in data:
+                logger.warning(f"Model '{model}' not found in data. Available models: {list(data.keys())}")
                 return []
-            model_dict = {model: results_by_model[model]}
+            model_dict = {model: data[model]}
         else:
-            model_dict = results_by_model
+            model_dict = data
         
         for model_name, model_conversations in model_dict.items():
             for conversation_data in model_conversations:
-                parsed_output = conversation_data.get('parsed_output', {})
-                
-                # Handle both formats: dict with 'messages' key or direct list of messages
-                if isinstance(parsed_output, list):
-                    messages = parsed_output
-                elif isinstance(parsed_output, dict):
-                    messages = parsed_output.get('messages', [])
-                else:
-                    messages = []
+                messages = conversation_data.get('messages', [])
 
                 if not messages:
                     continue
@@ -494,14 +426,13 @@ def get_example_hungarian_conversations(model: Optional[str] = None, json_file_p
                 for conv_str in example_conversations_str]
 
 
-def hu_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None, gpt_mini_file_path: Optional[str] = None):
+def hu_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None):
     """
     Hungarian metrics workflow using HuSpaCy.
     Args:
         model: Model identifier or 'all' to analyze all models
         limit: Optional limit on number of conversations to analyze per model
         json_file_path: Optional path to the JSON file
-        gpt_mini_file_path: Optional path to gpt-4.1-mini JSON file
     """
     # Import here to avoid circular import
     from hu_metrics import HungarianConversationMetrics
@@ -532,7 +463,7 @@ def hu_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         model_conversations = {}
         total_conversations = 0
         for model_name in all_models:
-            convos = get_example_hungarian_conversations(model=model_name, json_file_path=json_file_path, gpt_mini_file_path=gpt_mini_file_path)
+            convos = get_example_hungarian_conversations(model=model_name, json_file_path=json_file_path)
             if convos:
                 if limit:
                     convos = convos[:limit]
@@ -542,7 +473,7 @@ def hu_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         rich_print(f"[green]✅ Loaded {total_conversations} conversations across {len(model_conversations)} models[/green]")
     else:
         # Load single model
-        conversations = get_example_hungarian_conversations(model=model, json_file_path=json_file_path, gpt_mini_file_path=gpt_mini_file_path)
+        conversations = get_example_hungarian_conversations(model=model, json_file_path=json_file_path)
         if limit:
             conversations = conversations[:limit]
             logger.info(f"🔍 Limited to {len(conversations)} conversations for {model}")
@@ -600,13 +531,12 @@ def hu_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
     rich_print("\n[bold green]🎉 Analysis complete! Check the generated files for detailed results.[/bold green]")
 
 ##---------------------------------------------------- FINNISH WORKFLOW ----------------------------------------------------##
-def get_example_finnish_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None, gpt_mini_file_path: Optional[str] = None):
+def get_example_finnish_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None):
     """Return Finnish conversations as structured ConversationData objects.
     
     Parameters:
     - model: Optional model identifier to filter conversations. If None, returns all conversations.
-    - json_file_path: Optional path to the main JSON file (default: './parsed_conversations_fi.json')
-    - gpt_mini_file_path: Optional path to gpt-4.1-mini JSON file (if separate file exists)
+    - json_file_path: Optional path to the JSON file (default: '../../paper_data/combined_fi.json')
     
     Available models:
     1. anthropic.claude-sonnet-4-20250514-v1:0
@@ -617,11 +547,9 @@ def get_example_finnish_conversations(model: Optional[str] = None, json_file_pat
     6. mistral.mixtral-8x7b-instruct-v0:1
     """
 
-    # Special case: gpt-4.1-mini may use different file if specified
-    if model == 'gpt-4.1-mini' and gpt_mini_file_path is not None:
-        json_file_path = gpt_mini_file_path
-    elif json_file_path is None:
-        json_file_path = './parsed_conversations_fi.json'
+    # Set default path to paper_data folder
+    if json_file_path is None:
+        json_file_path = '../../paper_data/combined_fi.json'
     
     # Define Finnish speaker pattern
     finnish_speaker_pattern = r'(Agentti|Asikas|Asiakas|Palvelunedustaja|Agent|Klient):'
@@ -632,30 +560,19 @@ def get_example_finnish_conversations(model: Optional[str] = None, json_file_pat
 
         conversations = []
 
-        # Extract conversations from the JSON data
-        # Structure: results_by_model -> model_name -> list of conversations
-        results_by_model = data.get('results_by_model', {})
-        
+        # New structure: model names as top-level keys, each containing array of conversations
         # Filter by model if specified
         if model is not None:
-            if model not in results_by_model:
-                logger.warning(f"Model '{model}' not found in data. Available models: {list(results_by_model.keys())}")
+            if model not in data:
+                logger.warning(f"Model '{model}' not found in data. Available models: {list(data.keys())}")
                 return []
-            model_dict = {model: results_by_model[model]}
+            model_dict = {model: data[model]}
         else:
-            model_dict = results_by_model
+            model_dict = data
         
         for model_name, model_conversations in model_dict.items():
             for conversation_data in model_conversations:
-                parsed_output = conversation_data.get('parsed_output', {})
-                
-                # Handle both formats: dict with 'messages' key or direct list of messages
-                if isinstance(parsed_output, list):
-                    messages = parsed_output
-                elif isinstance(parsed_output, dict):
-                    messages = parsed_output.get('messages', [])
-                else:
-                    messages = []
+                messages = conversation_data.get('messages', [])
 
                 if not messages:
                     continue
@@ -757,14 +674,13 @@ def get_example_finnish_conversations(model: Optional[str] = None, json_file_pat
         return [ConversationData.from_string(conv_str, speaker_pattern=finnish_speaker_pattern) 
                 for conv_str in example_conversations_str]
         
-def fi_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None, gpt_mini_file_path: Optional[str] = None):
+def fi_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None):
     """Finnish metrics workflow using Stanza.
     
     Args:
         model: Model identifier or 'all' to analyze all models
         limit: Optional limit on number of conversations to analyze per model
         json_file_path: Optional path to the JSON file
-        gpt_mini_file_path: Optional path to gpt-4.1-mini JSON file
     """
     # Import here to avoid circular import
     from fi_metrics import FinnishConversationMetrics
@@ -795,7 +711,7 @@ def fi_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         model_conversations = {}
         total_conversations = 0
         for model_name in all_models:
-            convos = get_example_finnish_conversations(model=model_name, json_file_path=json_file_path, gpt_mini_file_path=gpt_mini_file_path)
+            convos = get_example_finnish_conversations(model=model_name, json_file_path=json_file_path)
             if convos:
                 if limit:
                     convos = convos[:limit]
@@ -805,7 +721,7 @@ def fi_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         rich_print(f"[green]✅ Loaded {total_conversations} conversations across {len(model_conversations)} models[/green]")
     else:
         # Load single model
-        conversations = get_example_finnish_conversations(model=model, json_file_path=json_file_path, gpt_mini_file_path=gpt_mini_file_path)
+        conversations = get_example_finnish_conversations(model=model, json_file_path=json_file_path)
         if limit:
             conversations = conversations[:limit]
             logger.info(f"🔍 Limited to {len(conversations)} conversations")
@@ -904,13 +820,7 @@ def main():
         '--json-file',
         type=str,
         default=None,
-        help='Path to the JSON file containing conversations. Defaults depend on language: Estonian (./parsed_conversations.json), Hungarian (./parsed_conversations_hu.json), Finnish (./parsed_conversations_fi.json)'
-    )
-    parser.add_argument(
-        '--gpt-mini-file',
-        type=str,
-        default=None,
-        help='Path to the gpt-4.1-mini JSON file (if using separate file for this model).  Defaults depend on language: Estonian (./llm_as_a_judge/ee/parsed_conversations_gpt-4.1-mini.json), Hungarian (./llm_as_a_judge/hu/parsed_conversations_gpt-4.1-mini.json), Finnish (./llm_as_a_judge/fi/parsed_conversations_gpt-4.1-mini.json) '
+        help='Path to the JSON file containing conversations. Defaults: Estonian (../../paper_data/combined_et.json), Hungarian (../../paper_data/combined_hu.json), Finnish (../../paper_data/combined_fi.json)'
     )
     args = parser.parse_args()
     
@@ -919,19 +829,19 @@ def main():
         logger.info("=" * 50)
         if args.limit:
             logger.info(f"🔍 Testing mode: Limited to {args.limit} conversations per model")
-        et_metrics_workflow(model=args.model, limit=args.limit, json_file_path=args.json_file, gpt_mini_file_path=args.gpt_mini_file)
+        et_metrics_workflow(model=args.model, limit=args.limit, json_file_path=args.json_file)
     elif args.language == 'hu':
         logger.info("Starting Hungarian Conversation Diversity Analysis")
         logger.info("=" * 50)
         if args.limit:
             logger.info(f"🔍 Testing mode: Limited to {args.limit} conversations per model")
-        hu_metrics_workflow(model=args.model, limit=args.limit, json_file_path=args.json_file, gpt_mini_file_path=args.gpt_mini_file)
+        hu_metrics_workflow(model=args.model, limit=args.limit, json_file_path=args.json_file)
     elif args.language == 'fi':
         logger.info("Starting Finnish Conversation Diversity Analysis")
         logger.info("=" * 50)
         if args.limit:
             logger.info(f"🔍 Testing mode: Limited to {args.limit} conversations per model")
-        fi_metrics_workflow(model=args.model, limit=args.limit, json_file_path=args.json_file, gpt_mini_file_path=args.gpt_mini_file)
+        fi_metrics_workflow(model=args.model, limit=args.limit, json_file_path=args.json_file)
     else: #For sanity, should not reach here due to argparse choices
         logger.error(f"Unsupported language code: {args.language}")
     

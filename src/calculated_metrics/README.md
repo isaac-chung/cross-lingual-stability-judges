@@ -60,13 +60,51 @@ nltk.download('stopwords')
 ## Step 1. Prepare Data Input
 The script can process conversations in two ways:
 
-1. **JSON file**: Place your conversation data in the expected JSON format at the default path or specify a custom path using `--json-file` argument. Note that gpt-4.1-mini had a bit different generation output, therefore it has special `--gpt-mini-file` argument.
+1. **JSON file**: Place your conversation data in the expected JSON format at the default path or specify a custom path using `--json-file` argument.
 2. **Built-in examples**: metric.py has customer service conversation examples for each language for testing the metrics. If JSON files are not found, the script falls back to built-in example conversations.
 
 ### Default JSON File Paths
-- **Estonian**: `parsed_conversations.json` (+ `llm_as_a_judge/ee/parsed_conversations_gpt-4.1-mini.json` for gpt-4.1-mini)
-- **Hungarian**: `parsed_conversations_hu.json`(+ `llm_as_a_judge/hu/parsed_conversations_gpt-4.1-mini.json` for gpt-4.1-mini)
-- **Finnish**: `parsed_conversations_fi.json` (+ `llm_as_a_judge/fi/parsed_conversations_gpt-4.1-mini.json` for gpt-4.1-mini)
+- **Estonian**: `../../paper_data/combined_et.json`
+- **Hungarian**: `../../paper_data/combined_hu.json`
+- **Finnish**: `../../paper_data/combined_fi.json`
+
+### JSON Structure
+The JSON files follow a unified structure where model names are top-level keys, each containing an array of conversation objects:
+```json
+{
+  "model-name": [
+    {
+      "subject": "...",
+      "messages": [
+        {
+          "from_name": "Agent Name",
+          "from_type": "agent",
+          "message": "..."
+        },
+        {
+          "from_name": "Customer Name",
+          "from_type": "customer",
+          "message": "..."
+        }
+      ],
+      "model": "model-name",
+      "_metadata": {
+        "language": "et|hu|fi",
+        "industry": "...",
+        "problem": "place_order|cancel_order|return_request|general_inquiry",
+        "n_messages": 4,
+        "n_agents": 2,
+        "channel": "chat|email|phone",
+        "agent_experience": "junior|senior",
+        "agent_type": "bot|human",
+        "model": "model-name"
+      },
+      "source_file": ""
+    }
+  ]
+}
+```
+Note that we have an experimental dataset in en as well, but no automatic metrics are run on that.
 
 ## Step 2. Run metrics on the conversations
 **Analyze Estonian conversations with all models (default):**
@@ -89,8 +127,8 @@ python metrics.py -l fi
 **Analyze specific model on Estonian conversations:**
 ```bash
 python metrics.py -m gpt-4.1-mini
-python metrics.py -l et -m gpt-4.1-mini #defaults to HU gpt generated convos provided
-python metrics.py -l et -m gpt-4.1-mini --gpt-mini-file /path/to/gpt_mini.json #in case you would like to define your own path
+python metrics.py -l et -m gpt-4.1-mini
+python metrics.py -l et -m gpt-4.1-mini --json-file /path/to/custom.json
 ```
 **Analyze specific model on Finnish/Hungarian conversations:**
 ```bash
@@ -105,14 +143,10 @@ python metrics.py -l fi -m gpt-4.1-mini --limit 10  # Analyze only 10 conversati
 ```
 **Specify custom paths for JSON files:**
 ```bash
-# Custom main JSON file
+# Custom JSON file for any language
 python metrics.py -l hu --json-file /path/to/custom_conversations.json
-
-# Custom gpt-4.1-mini file (works for all languages)
-python metrics.py -l et -m gpt-4.1-mini --gpt-mini-file /path/to/gpt_mini.json
-
-# Both custom files
-python metrics.py -l fi --json-file /path/to/fi_data.json --gpt-mini-file /path/to/gpt_mini_fi.json
+python metrics.py -l et --json-file /path/to/custom_et.json
+python metrics.py -l fi -m gpt-4.1-mini --json-file /path/to/custom_fi.json
 ```
 
 ### Available Models
