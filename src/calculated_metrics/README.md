@@ -60,6 +60,7 @@ nltk.download('stopwords')
 ## Step 1. Prepare Data Input
 The script can process conversations in two ways:
 
+
 1. **JSON file**: Place your conversation data in the expected JSON format at the default path or specify a custom path using `--json-file` argument.
 2. **Built-in examples**: metric.py has customer service conversation examples for each language for testing the metrics. If JSON files are not found, the script falls back to built-in example conversations.
 
@@ -127,6 +128,7 @@ python metrics.py -l fi
 **Analyze specific model on Estonian conversations:**
 ```bash
 python metrics.py -m gpt-4.1-mini
+
 python metrics.py -l et -m gpt-4.1-mini
 python metrics.py -l et -m gpt-4.1-mini --json-file /path/to/custom.json
 ```
@@ -143,7 +145,6 @@ python metrics.py -l fi -m gpt-4.1-mini --limit 10  # Analyze only 10 conversati
 ```
 **Specify custom paths for JSON files:**
 ```bash
-# Custom JSON file for any language
 python metrics.py -l hu --json-file /path/to/custom_conversations.json
 python metrics.py -l et --json-file /path/to/custom_et.json
 python metrics.py -l fi -m gpt-4.1-mini --json-file /path/to/custom_fi.json

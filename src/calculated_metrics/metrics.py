@@ -43,11 +43,14 @@ __version__ = "1.0.0"
 
 ##---------------------------------------------------- ESTONIAN WORKFLOW ----------------------------------------------------##
 def get_example_estonian_conversations(model: Optional[str] = None, json_file_path: Optional[str] = None):
+
     """Return Estonian conversations as structured ConversationData objects.
     
     Parameters:
     - model: Optional model identifier to filter conversations. If None, returns all conversations.
+
     - json_file_path: Optional path to the JSON file (default: '../../paper_data/combined_et.json')
+
     
     Available models:
     1. anthropic.claude-sonnet-4-20250514-v1:0
@@ -57,18 +60,14 @@ def get_example_estonian_conversations(model: Optional[str] = None, json_file_pa
     5. meta.llama3-8b-instruct-v1:0
     6. mistral.mixtral-8x7b-instruct-v0:1
     """
-
     # Set default path to paper_data folder
     if json_file_path is None:
         json_file_path = '../../paper_data/combined_et.json'
-
     try:
         with open(json_file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         conversations = []
-
-        # New structure: model names as top-level keys, each containing array of conversations
         # Filter by model if specified
         if model is not None:
             if model not in data:
@@ -179,14 +178,15 @@ def get_example_estonian_conversations(model: Optional[str] = None, json_file_pa
         # Convert string conversations to ConversationData objects
         return [ConversationData.from_string(conv_str) for conv_str in example_conversations_str]
 
-
 def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None, json_file_path: Optional[str] = None):
+
     """Estonian metrics workflow using EstNLTK.
     
     Args:
         model: Model identifier or 'all' to analyze all models
         limit: Optional limit on number of conversations to analyze per model
         json_file_path: Optional path to the JSON file
+
     """
     # Import here to avoid circular import
     from et_metrics import EstonianConversationMetrics
@@ -217,6 +217,7 @@ def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
         total_conversations = 0
         for model_name in all_models:
             convos = get_example_estonian_conversations(model=model_name, json_file_path=json_file_path)
+
             if convos:
                 if limit:
                     convos = convos[:limit]
@@ -227,6 +228,7 @@ def et_metrics_workflow(model: Optional[str] = None, limit: Optional[int] = None
     else:
         # Load single model
         conversations = get_example_estonian_conversations(model=model, json_file_path=json_file_path)
+
         if limit:
             conversations = conversations[:limit]
             logger.info(f"🔍 Limited to {len(conversations)} conversations for {model}")
