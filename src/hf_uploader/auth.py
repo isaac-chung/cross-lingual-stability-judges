@@ -4,7 +4,7 @@ Authentication module for HuggingFace Hub operations.
 
 import logging
 from typing import Dict, Any, Optional
-from huggingface_hub import HfApi, HfFolder, whoami
+from huggingface_hub import HfApi, whoami
 from huggingface_hub.utils import HfHubHTTPError
 
 
