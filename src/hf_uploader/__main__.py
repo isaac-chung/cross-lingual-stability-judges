@@ -135,6 +135,11 @@ Environment variables required:
         action="store_true",
         help="Preview operations without actually uploading"
     )
+    parser.add_argument(
+        "--skip-card",
+        action="store_true",
+        help="Skip dataset card generation (upload data only)"
+    )
 
     # Output options
     parser.add_argument(
@@ -322,7 +327,8 @@ async def main() -> None:
             results = await uploader.upload_by_model(
                 model=args.model,
                 languages=languages,
-                dry_run=args.dry_run
+                dry_run=args.dry_run,
+                skip_card=args.skip_card
             )
 
         elif args.files:
@@ -338,7 +344,8 @@ async def main() -> None:
 
             results = await uploader.upload_files(
                 file_paths=file_paths,
-                dry_run=args.dry_run
+                dry_run=args.dry_run,
+                skip_card=args.skip_card
             )
 
         # Display results

@@ -9,7 +9,6 @@ from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 import time
 
-from tqdm import tqdm
 from datasets import DatasetDict, load_dataset, concatenate_datasets
 
 from .config import HFConfig, DATASET_CARD_TEMPLATE, SUPPORTED_LANGUAGES
@@ -42,7 +41,8 @@ class HFUploader:
         self,
         model: str,
         languages: Optional[List[str]] = None,
-        dry_run: bool = False
+        dry_run: bool = False,
+        skip_card: bool = False
     ) -> Dict[str, str]:
         """Upload all conversations for a specific model.
 
@@ -50,6 +50,7 @@ class HFUploader:
             model: Model name to filter by
             languages: Optional list of language codes to include
             dry_run: If True, only preview operations without uploading
+            skip_card: If True, skip dataset card generation
 
         Returns:
             Dictionary mapping dataset names to their URLs
@@ -75,7 +76,7 @@ class HFUploader:
         results = {}
         for file_model, file_list in grouped_files.items():
             try:
-                dataset_url = await self._upload_model_dataset(file_model, file_list)
+                dataset_url = await self._upload_model_dataset(file_model, file_list, skip_card=skip_card)
                 results[file_model] = dataset_url
             except Exception as e:
                 logger.error(f"Failed to upload dataset for {file_model}: {e}")
@@ -86,13 +87,15 @@ class HFUploader:
     async def upload_files(
         self,
         file_paths: List[Path],
-        dry_run: bool = False
+        dry_run: bool = False,
+        skip_card: bool = False
     ) -> Dict[str, str]:
         """Upload specific conversation files.
 
         Args:
             file_paths: List of paths to conversation files
             dry_run: If True, only preview operations without uploading
+            skip_card: If True, skip dataset card generation
 
         Returns:
             Dictionary mapping dataset names to their URLs
@@ -128,7 +131,7 @@ class HFUploader:
         results = {}
         for model, files in grouped_files.items():
             try:
-                dataset_url = await self._upload_model_dataset(model, files)
+                dataset_url = await self._upload_model_dataset(model, files, skip_card=skip_card)
                 results[model] = dataset_url
             except Exception as e:
                 logger.error(f"Failed to upload dataset for {model}: {e}")
@@ -189,12 +192,13 @@ class HFUploader:
 
         return dict(grouped)
 
-    async def _upload_model_dataset(self, model: str, files: List[Path]) -> str:
+    async def _upload_model_dataset(self, model: str, files: List[Path], skip_card: bool = False) -> str:
         """Upload dataset for a specific model.
 
         Args:
             model: Model name
             files: List of conversation files for this model
+            skip_card: If True, skip dataset card generation
 
         Returns:
             Dataset URL
@@ -214,7 +218,11 @@ class HFUploader:
 
             # Get languages from new dataset
             new_languages = list(new_dataset_dict.keys())
+            total_convos = sum(len(set(ds["conversation_id"])) for ds in new_dataset_dict.values())
             logger.info(f"Built new dataset with {len(new_languages)} language subsets: {new_languages}")
+            logger.info(f"Total conversations: {total_convos:,}")
+            for lang, ds in new_dataset_dict.items():
+                logger.info(f"  {lang}: {len(set(ds['conversation_id'])):,} conversations")
 
         except Exception as e:
             raise RuntimeError(f"Failed to build dataset: {e}")
@@ -252,10 +260,13 @@ class HFUploader:
             logger.info("Uploading dataset to HuggingFace Hub...")
             await self._upload_with_progress(final_dataset_dict, full_dataset_name)
 
-            # Create and upload dataset card
-            await self._create_dataset_card(
-                full_dataset_name, model, all_languages, final_dataset_dict
-            )
+            # Create and upload dataset card (unless skipped)
+            if skip_card:
+                logger.info("Skipping dataset card generation (--skip-card)")
+            else:
+                await self._create_dataset_card(
+                    full_dataset_name, model, all_languages, final_dataset_dict
+                )
 
             dataset_url = f"https://huggingface.co/datasets/{full_dataset_name}"
             logger.info(f"Successfully uploaded dataset: {dataset_url}")
@@ -360,18 +371,9 @@ class HFUploader:
 
         # Run upload in a thread to avoid blocking
         loop = asyncio.get_event_loop()
-        with tqdm(desc="Uploading dataset", unit="subset") as pbar:
-            pbar.total = len(dataset_dict)
-
-            # Simulate progress (actual upload doesn't provide detailed progress)
-            upload_future = loop.run_in_executor(None, upload_task)
-
-            while not upload_future.done():
-                await asyncio.sleep(1)
-                # Update progress bar (this is approximate)
-
-            await upload_future
-            pbar.update(len(dataset_dict))
+        upload_future = loop.run_in_executor(None, upload_task)
+        await upload_future
+        logger.info("Dataset upload complete")
 
     async def _create_dataset_card(
         self,
@@ -556,6 +558,13 @@ class HFUploader:
                 logger.info(f"    - {file_path}")
             if len(lang_files) > 3:
                 logger.info(f"    ... and {len(lang_files) - 3} more")
+
+        # Count conversations from files
+        conv_counts = self.builder.count_conversations_from_files(files)
+        logger.info(f"Total conversations: {conv_counts['total']:,}")
+        for lang in file_info.keys():
+            if lang in conv_counts:
+                logger.info(f"  {lang}: {conv_counts[lang]:,} conversations")
 
         # Check if dataset exists
         exists = self.auth.check_dataset_exists(dataset_name)
