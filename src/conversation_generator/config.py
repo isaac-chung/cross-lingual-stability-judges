@@ -127,7 +127,7 @@ def random_config() -> ConversationConfig:
         language=language_code,  # type: ignore
         industry=random.choice(INDUSTRIES),
         problem=random.choice(PROBLEMS),
-        n_messages=random.randint(4, 16),
+        n_messages=random.choices([4, 8, 12, 16], weights=[0.4, 0.3, 0.2, 0.1])[0],
         n_agents=random.choice([1, 2]),
         channel=random.choice(["email", "chat"]),
         agent_experience=random.choice(["junior", "senior"]),

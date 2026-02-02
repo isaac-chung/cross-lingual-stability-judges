@@ -267,6 +267,42 @@ class DatasetBuilder:
 
         return hf_data
 
+    def count_conversations_from_files(self, files: List[Path]) -> Dict[str, int]:
+        """Count total conversations from files.
+
+        Args:
+            files: List of Path objects pointing to JSONL conversation files
+
+        Returns:
+            Dictionary with 'total' and per-language counts
+        """
+        counts = {"total": 0}
+
+        for file_path in files:
+            try:
+                file_info = self._extract_file_info(file_path)
+                language = file_info.get("language", "unknown")
+
+                if language not in counts:
+                    counts[language] = 0
+
+                with open(file_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            json.loads(line)  # Validate it's valid JSON
+                            counts[language] += 1
+                            counts["total"] += 1
+                        except json.JSONDecodeError:
+                            continue
+            except Exception as e:
+                logger.warning(f"Failed to count conversations from {file_path}: {e}")
+                continue
+
+        return counts
+
     def get_dataset_statistics(self, dataset_dict: DatasetDict) -> Dict[str, Any]:
         """Generate statistics for the dataset.
 
@@ -276,6 +312,8 @@ class DatasetBuilder:
         Returns:
             Dictionary with statistics
         """
+        from collections import Counter
+
         stats = {
             "total_languages": len(dataset_dict),
             "languages": list(dataset_dict.keys()),
@@ -284,21 +322,13 @@ class DatasetBuilder:
         }
 
         for lang, dataset in dataset_dict.items():
-            # Get unique conversations count
-            unique_conversations = len(set(dataset["conversation_id"]))
-
-            # Get conversation length stats
-            conversation_lengths = {}
-            for conv_id in set(dataset["conversation_id"]):
-                conv_messages = [msg for i, msg in enumerate(dataset["message"])
-                               if dataset["conversation_id"][i] == conv_id]
-                conversation_lengths[conv_id] = len(conv_messages)
-
-            lengths = list(conversation_lengths.values())
+            # Count messages per conversation in O(n) using Counter
+            conversation_counts = Counter(dataset["conversation_id"])
+            lengths = list(conversation_counts.values())
 
             stats["language_stats"][lang] = {
                 "messages": len(dataset),
-                "conversations": unique_conversations,
+                "conversations": len(conversation_counts),
                 "avg_messages_per_conversation": sum(lengths) / len(lengths) if lengths else 0,
                 "min_conversation_length": min(lengths) if lengths else 0,
                 "max_conversation_length": max(lengths) if lengths else 0,

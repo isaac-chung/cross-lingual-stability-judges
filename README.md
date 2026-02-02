@@ -11,6 +11,39 @@ cp .env.example .env  # then add your OPENAI_API_KEY
 
 This project uses [liteLLM](https://docs.litellm.ai/) for unified LLM provider support, enabling seamless switching between OpenAI, Groq, Anthropic, and other providers while maintaining identical APIs and functionality. Use the `--provider` flag to switch between providers (OpenAI, Groq, etc.) without changing any other code.
 
+## Available Datasets
+
+Pre-generated conversation datasets are available on HuggingFace Hub:
+
+| Model | Languages | Conversations | Link |
+|-------|-----------|---------------|------|
+| gpt-4.1-mini | Estonian, Finnish, Hungarian | 30,000 | [isaacchung/controlled-generated-convos-gpt-4.1-mini](https://huggingface.co/datasets/isaacchung/controlled-generated-convos-gpt-4.1-mini) |
+
+### Loading Datasets for Analysis
+
+To use the HuggingFace datasets with the analysis tools, first convert them to the expected format:
+
+```bash
+# Load full dataset
+python -m hf_loader isaacchung/controlled-generated-convos-gpt-4.1-mini
+
+# Load specific languages only
+python -m hf_loader isaacchung/controlled-generated-convos-gpt-4.1-mini --languages et,fi
+
+# Specify output path
+python -m hf_loader isaacchung/controlled-generated-convos-gpt-4.1-mini -o data/combined.json
+
+# Preview without saving
+python -m hf_loader isaacchung/controlled-generated-convos-gpt-4.1-mini --dry-run
+```
+
+Then run analysis on the converted file:
+
+```bash
+python -m llm_judge data/combined_hf_gpt-4.1-mini.json --stats
+python -m label_recovery data/combined_hf_gpt-4.1-mini.json --stats
+```
+
 ## Step 1: Generate Conversations
 
 Generate synthetic customer support conversations in Finno-Ugric languages (Estonian, Finnish, Hungarian) and English. Agent messages use actual agent names (e.g., "Amanda S.") instead of generic identifiers like "Agent 1".
@@ -289,7 +322,7 @@ The uploader creates datasets organized as:
 - **Language subsets**: `et`, `fi`, `hu`, `en-us` (separate subset for each language)
 - **Message structure**: Each row is a single message with conversation metadata
 
-Example dataset URL: `https://huggingface.co/datasets/isaac-chung/controlled-generated-convos-gpt-4.1-mini`
+Example dataset URL: `https://huggingface.co/datasets/isaacchung/controlled-generated-convos-gpt-4.1-mini`
 
 ### Incremental Updates
 
@@ -372,10 +405,10 @@ Each uploaded dataset contains message-based rows with rich metadata:
 from datasets import load_dataset
 
 # Load specific language subset
-dataset = load_dataset("isaac-chung/controlled-generated-convos-gpt-4.1-mini", "et")
+dataset = load_dataset("isaacchung/controlled-generated-convos-gpt-4.1-mini", "et")
 
 # Load all subsets
-dataset = load_dataset("isaac-chung/controlled-generated-convos-gpt-4.1-mini")
+dataset = load_dataset("isaacchung/controlled-generated-convos-gpt-4.1-mini")
 
 # Example row structure
 print(dataset["et"][0])
