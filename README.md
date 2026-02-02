@@ -15,7 +15,7 @@ This project uses [liteLLM](https://docs.litellm.ai/) for unified LLM provider s
 
 Pre-generated conversation datasets are available on HuggingFace Hub:
 
-| Model | Languages | Conversations | Link |
+| Model | Languages | Conversations | 🤗 Link |
 |-------|-----------|---------------|------|
 | gpt-4.1-mini | Estonian, Finnish, Hungarian | 30,000 | [isaacchung/controlled-generated-convos-gpt-4.1-mini](https://huggingface.co/datasets/isaacchung/controlled-generated-convos-gpt-4.1-mini) |
 
@@ -250,7 +250,7 @@ The analysis displays:
 For models using reasoning effort, the model name includes the effort level:
 - `data/label_recovery_o3-medium_et_20260127-143052.jsonl`
 
-## Step 7: Ranking Inversions Analysis
+## Step 6: Ranking Inversions Analysis
 
 Analyze cross-language ranking stability by computing ranking correlations (Kendall tau, Spearman rho) and pairwise inversions across language pairs.
 
@@ -289,7 +289,7 @@ The analysis computes:
 - Model ranking tables by language and metric
 - Statistical significance indicators
 
-## Step 6: Upload to HuggingFace Hub
+## Step 7: Upload to HuggingFace Hub
 
 Upload conversation datasets to HuggingFace Hub for sharing and collaboration. The uploader automatically organizes datasets by model with language subsets and supports incremental updates.
 
