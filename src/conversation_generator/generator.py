@@ -7,6 +7,8 @@ import random
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from tqdm.asyncio import tqdm as atqdm
+
 # Handle imports for both module usage and CLI usage
 try:
     from ..common.llm_client import create_async_client
@@ -226,7 +228,9 @@ class ConversationGenerator:
             except Exception as e:
                 if attempt == max_retries - 1:
                     raise
-                if "rate_limit" in str(e).lower() or "429" in str(e):
+                error_str = str(e).lower()
+                # Retry on rate limits and connection errors
+                if "rate_limit" in error_str or "429" in str(e) or "connection" in error_str:
                     delay = base_delay * (2**attempt) + random.uniform(0, 1)
                     await asyncio.sleep(delay)
                 else:
@@ -284,5 +288,28 @@ class ConversationGenerator:
                 return await self.generate(config=config)
 
         tasks = [generate_with_semaphore(i) for i in range(n)]
-        results = await asyncio.gather(*tasks)
-        return list(results)
+
+        # Use gather with return_exceptions to prevent one failure from killing all tasks
+        all_results = await atqdm.gather(
+            *tasks,
+            desc="Generating conversations",
+            unit="convo",
+            return_exceptions=True,
+        )
+
+        # Separate successes from failures
+        successes = []
+        failures = []
+        for result in all_results:
+            if isinstance(result, Exception):
+                failures.append(result)
+            else:
+                successes.append(result)
+
+        if failures:
+            print(f"\nWarning: {len(failures)} conversations failed after retries")
+            # Log first few unique error types
+            error_types = set(type(e).__name__ for e in failures[:10])
+            print(f"Error types: {', '.join(error_types)}")
+
+        return successes
